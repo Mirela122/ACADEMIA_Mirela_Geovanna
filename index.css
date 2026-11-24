@@ -1,0 +1,61 @@
+body{
+    background-color: #262129;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+}
+
+#nome1{
+    color: #cf0139;
+}
+
+#nome2{
+    color: #5f575f;
+}
+
+#nome3{
+    color: #83797e;
+}
+#menu{
+    background-color: #c8d1d9 !important;
+}
+
+#aula{
+    background-color: #83797e;
+    color: rgb(200, 196, 191);
+}
+
+#butp{
+    background-color: #cf0139;
+    color: rgb(200, 196, 191);
+}
+
+#formull{
+    border-color: #cf0139;
+    background-color: #c8d1d9;
+    color: #5f575f  ;
+    border-style: groove;
+    border-width: 10px;
+    text-align: center;
+    margin-left: 150px;
+    margin-right: 150px;
+}
+
+#formull2{
+    border-color: #262129;
+    background-color: 83797e;
+    color: #c8d1d9;
+    border-style: ridge;
+    border-width: 10px;
+    text-align: center;
+    margin-left: 150px;
+    margin-right: 150px;
+}
+
+#salvar{
+    background-color: #c8d1d9;
+    color: #cf0139;
+}
+
+#limpar{
+    background-color: #cf0139;
+    color: #c8d1d9;
+}
