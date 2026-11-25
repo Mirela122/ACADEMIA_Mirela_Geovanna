@@ -266,20 +266,24 @@ $consulta->close();
 
         <div class="mb-5">
 
-            <h1 class="titulo">
-                Olá, <?= escapar($aluno["nome_cliente"]) ?>!
-            </h1>
+    <h1 class="titulo">
+        Olá, <?= escapar($aluno["nome_cliente"]) ?>!
+    </h1>
 
-            <h4>
-                Bem-vindo à sua área do aluno UPIR.
-            </h4>
+    <h4>
+        Bem-vindo à sua área do aluno UPIR.
+    </h4>
 
-            <p>
-                Aqui você pode acompanhar seu plano,
-                pagamentos e acessos à academia.
-            </p>
+    <p>
+        Aqui você pode acompanhar seu plano,
+        pagamentos e acessos à academia.
+    </p>
 
-        </div>
+    <a href="editar_dados.php" class="btn btn-upir mt-3">
+        Editar meus dados
+    </a>
+
+</div>
 
 
         <!-- MEU PLANO -->
