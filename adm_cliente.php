@@ -36,7 +36,7 @@ $sql = "
         email_cliente,
         telefone_cliente
     FROM Cliente
-    ORDER BY nome_cliente ASC
+    ORDER BY id_cliente ASC
 ";
 
 $resultado = $conexao->query($sql);

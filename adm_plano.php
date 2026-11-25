@@ -17,6 +17,7 @@ function escapar($valor) {
 $mensagem = "";
 $tipo_mensagem = "";
 
+// TOKEN DE SEGURANÇA
 if (empty($_SESSION["token"])) {
     $_SESSION["token"] = bin2hex(random_bytes(32));
 }
@@ -29,8 +30,7 @@ $token = $_SESSION["token"];
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["cadastrar_plano"])) {
 
-    $valor = trim($_POST["valor_plano"] ?? "");
-    $valor = str_replace(",", ".", $valor);
+    $valor = str_replace(",", ".", trim($_POST["valor_plano"] ?? ""));
 
     if (
         !hash_equals($token, $_POST["token"] ?? "") ||
@@ -45,20 +45,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["cadastrar_plano"])) {
     } else {
 
         $stmt = $conexao->prepare("
-            INSERT INTO Plano (valor_plano)
-            VALUES (?)
+            INSERT INTO Plano (valor_plano, status_plano)
+            VALUES (?, 1)
         ");
 
         $valor = (float)$valor;
         $stmt->bind_param("d", $valor);
 
         if ($stmt->execute()) {
-            header("Location: adm_plano_beneficio.php?sucesso=plano");
-            exit;
+            $mensagem = "Plano cadastrado com sucesso!";
+            $tipo_mensagem = "success";
+        } else {
+            $mensagem = "Erro ao cadastrar o plano.";
+            $tipo_mensagem = "danger";
         }
 
-        $mensagem = "Erro ao cadastrar o plano.";
-        $tipo_mensagem = "danger";
+        $stmt->close();
     }
 }
 
@@ -89,12 +91,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["cadastrar_beneficio"]
         $stmt->bind_param("s", $descricao);
 
         if ($stmt->execute()) {
-            header("Location: adm_plano_beneficio.php?sucesso=beneficio");
-            exit;
+            $mensagem = "Benefício cadastrado com sucesso!";
+            $tipo_mensagem = "success";
+        } else {
+            $mensagem = "Erro ao cadastrar o benefício.";
+            $tipo_mensagem = "danger";
         }
 
-        $mensagem = "Erro ao cadastrar o benefício.";
-        $tipo_mensagem = "danger";
+        $stmt->close();
     }
 }
 
@@ -128,6 +132,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["associar"])) {
         $stmt->execute();
 
         $plano_existe = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
 
         $stmt = $conexao->prepare("
             SELECT id_beneficio
@@ -139,6 +144,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["associar"])) {
         $stmt->execute();
 
         $beneficio_existe = $stmt->get_result()->num_rows > 0;
+        $stmt->close();
 
         if (!$plano_existe || !$beneficio_existe) {
 
@@ -157,7 +163,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["associar"])) {
             $stmt->bind_param("ii", $id_plano, $id_beneficio);
             $stmt->execute();
 
-            if ($stmt->get_result()->num_rows > 0) {
+            $associacao_existe = $stmt->get_result()->num_rows > 0;
+            $stmt->close();
+
+            if ($associacao_existe) {
 
                 $mensagem = "Este benefício já está associado a esse plano.";
                 $tipo_mensagem = "warning";
@@ -173,13 +182,113 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["associar"])) {
                 $stmt->bind_param("ii", $id_plano, $id_beneficio);
 
                 if ($stmt->execute()) {
-                    header("Location: adm_plano_beneficio.php?sucesso=associar");
-                    exit;
+                    $mensagem = "Benefício associado ao plano com sucesso!";
+                    $tipo_mensagem = "success";
+                } else {
+                    $mensagem = "Erro ao associar o benefício.";
+                    $tipo_mensagem = "danger";
                 }
 
-                $mensagem = "Erro ao associar o benefício.";
+                $stmt->close();
+            }
+        }
+    }
+}
+
+// =================================================
+// ATIVAR OU DESATIVAR PLANO
+// =================================================
+
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["alterar_status"])) {
+
+    $id_plano = (int)($_POST["id_plano"] ?? 0);
+
+    if (
+        !hash_equals($token, $_POST["token"] ?? "") ||
+        $id_plano <= 0
+    ) {
+
+        $mensagem = "Dados inválidos.";
+        $tipo_mensagem = "danger";
+
+    } else {
+
+        $stmt = $conexao->prepare("
+            SELECT status_plano
+            FROM Plano
+            WHERE id_plano = ?
+        ");
+
+        $stmt->bind_param("i", $id_plano);
+        $stmt->execute();
+
+        $plano = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if (!$plano) {
+
+            $mensagem = "Plano não encontrado.";
+            $tipo_mensagem = "danger";
+
+        } elseif ((int)$plano["status_plano"] === 1) {
+
+            $stmt = $conexao->prepare("
+                SELECT COUNT(*) AS total
+                FROM assinatura
+                WHERE id_plano = ?
+            ");
+
+            $stmt->bind_param("i", $id_plano);
+            $stmt->execute();
+
+            $total_assinaturas = $stmt->get_result()->fetch_assoc()["total"];
+            $stmt->close();
+
+            if ($total_assinaturas > 0) {
+
+                $mensagem = "Este plano possui assinaturas vinculadas e não pode ser desativado.";
+                $tipo_mensagem = "danger";
+
+            } else {
+
+                $stmt = $conexao->prepare("
+                    UPDATE Plano
+                    SET status_plano = 0
+                    WHERE id_plano = ?
+                ");
+
+                $stmt->bind_param("i", $id_plano);
+
+                if ($stmt->execute()) {
+                    $mensagem = "Plano desativado com sucesso!";
+                    $tipo_mensagem = "success";
+                } else {
+                    $mensagem = "Erro ao desativar o plano.";
+                    $tipo_mensagem = "danger";
+                }
+
+                $stmt->close();
+            }
+
+        } else {
+
+            $stmt = $conexao->prepare("
+                UPDATE Plano
+                SET status_plano = 1
+                WHERE id_plano = ?
+            ");
+
+            $stmt->bind_param("i", $id_plano);
+
+            if ($stmt->execute()) {
+                $mensagem = "Plano reativado com sucesso!";
+                $tipo_mensagem = "success";
+            } else {
+                $mensagem = "Erro ao reativar o plano.";
                 $tipo_mensagem = "danger";
             }
+
+            $stmt->close();
         }
     }
 }
@@ -210,30 +319,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["remover"])) {
         $stmt->bind_param("i", $id);
 
         if ($stmt->execute() && $stmt->affected_rows > 0) {
-            header("Location: adm_plano_beneficio.php?sucesso=remover");
-            exit;
+            $mensagem = "Associação removida com sucesso!";
+            $tipo_mensagem = "success";
+        } else {
+            $mensagem = "Não foi possível remover a associação.";
+            $tipo_mensagem = "danger";
         }
 
-        $mensagem = "Não foi possível remover a associação.";
-        $tipo_mensagem = "danger";
-    }
-}
-
-// =================================================
-// MENSAGENS
-// =================================================
-
-if (isset($_GET["sucesso"])) {
-
-    $mensagens = [
-        "plano" => ["Plano cadastrado com sucesso!", "success"],
-        "beneficio" => ["Benefício cadastrado com sucesso!", "success"],
-        "associar" => ["Benefício associado ao plano com sucesso!", "success"],
-        "remover" => ["Associação removida com sucesso!", "success"]
-    ];
-
-    if (isset($mensagens[$_GET["sucesso"]])) {
-        [$mensagem, $tipo_mensagem] = $mensagens[$_GET["sucesso"]];
+        $stmt->close();
     }
 }
 
@@ -254,7 +347,7 @@ $resumo_associacoes = $conexao->query("
 ")->fetch_assoc();
 
 $planos = $conexao->query("
-    SELECT id_plano, valor_plano
+    SELECT id_plano, valor_plano, status_plano
     FROM Plano
     ORDER BY id_plano ASC
 ");
@@ -270,18 +363,15 @@ $resultado = $conexao->query("
         pb.id_plano_beneficio,
         p.id_plano,
         p.valor_plano,
+        p.status_plano,
         b.id_beneficio,
         b.descricao_beneficio
-
     FROM Plano_Beneficio pb
-
     INNER JOIN Plano p
         ON pb.id_plano = p.id_plano
-
     INNER JOIN Beneficio b
         ON pb.id_beneficio = b.id_beneficio
-
-    ORDER BY p.id_plano, b.id_beneficio
+    ORDER BY p.id_plano ASC, b.id_beneficio ASC
 ");
 
 ?>
@@ -382,8 +472,6 @@ $resultado = $conexao->query("
 
 <body>
 
-<!-- MENU -->
-
 <nav class="navbar navbar-dark bg-dark px-4">
 
     <a class="navbar-brand fw-bold" href="adm.php">
@@ -397,8 +485,6 @@ $resultado = $conexao->query("
 </nav>
 
 <main class="container my-5">
-
-    <!-- CABEÇALHO -->
 
     <div class="mb-4">
 
@@ -416,16 +502,17 @@ $resultado = $conexao->query("
 
     </div>
 
-    <!-- MENSAGENS -->
-
     <?php if ($mensagem !== ""): ?>
 
         <div class="alert alert-<?= escapar($tipo_mensagem) ?> alert-dismissible fade show">
 
             <?= escapar($mensagem) ?>
 
-            <button type="button" class="btn-close"
-                    data-bs-dismiss="alert"></button>
+            <button type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Fechar">
+            </button>
 
         </div>
 
@@ -436,51 +523,30 @@ $resultado = $conexao->query("
     <div class="row g-3 mb-4">
 
         <div class="col-md-4">
-
             <div class="card-resumo">
-
-                <p class="text-secondary mb-2">
-                    Total de planos
-                </p>
-
+                <p class="text-secondary mb-2">Total de planos</p>
                 <h3 class="valor-resumo">
                     <?= (int)$resumo_planos["total"] ?>
                 </h3>
-
             </div>
-
         </div>
 
         <div class="col-md-4">
-
             <div class="card-resumo">
-
-                <p class="text-secondary mb-2">
-                    Total de benefícios
-                </p>
-
+                <p class="text-secondary mb-2">Total de benefícios</p>
                 <h3 class="valor-resumo">
                     <?= (int)$resumo_beneficios["total"] ?>
                 </h3>
-
             </div>
-
         </div>
 
         <div class="col-md-4">
-
             <div class="card-resumo">
-
-                <p class="text-secondary mb-2">
-                    Benefícios associados
-                </p>
-
+                <p class="text-secondary mb-2">Benefícios associados</p>
                 <h3 class="valor-resumo">
                     <?= (int)$resumo_associacoes["total"] ?>
                 </h3>
-
             </div>
-
         </div>
 
     </div>
@@ -488,8 +554,6 @@ $resultado = $conexao->query("
     <!-- CADASTROS -->
 
     <div class="row g-4 mb-4">
-
-        <!-- CADASTRAR PLANO -->
 
         <div class="col-md-6">
 
@@ -504,27 +568,21 @@ $resultado = $conexao->query("
                     <input type="hidden" name="token"
                            value="<?= escapar($token) ?>">
 
-                    <label class="form-label">
-                        Valor do plano (R$)
-                    </label>
+                    <label class="form-label">Valor do plano (R$)</label>
 
-                    <input
-                        type="number"
-                        name="valor_plano"
-                        class="form-control campo-admin mb-3"
-                        placeholder="Ex: 99.90"
-                        min="0.01"
-                        max="999999.99"
-                        step="0.01"
-                        required
-                    >
+                    <input type="number"
+                           name="valor_plano"
+                           class="form-control campo-admin mb-3"
+                           placeholder="Ex: 99.90"
+                           min="0.01"
+                           max="999999.99"
+                           step="0.01"
+                           required>
 
                     <button type="submit"
                             name="cadastrar_plano"
                             class="btn btn-upir w-100">
-
                         Cadastrar plano
-
                     </button>
 
                 </form>
@@ -532,8 +590,6 @@ $resultado = $conexao->query("
             </div>
 
         </div>
-
-        <!-- CADASTRAR BENEFÍCIO -->
 
         <div class="col-md-6">
 
@@ -552,21 +608,17 @@ $resultado = $conexao->query("
                         Descrição do benefício
                     </label>
 
-                    <textarea
-                        name="descricao_beneficio"
-                        class="form-control campo-admin mb-3"
-                        rows="3"
-                        maxlength="500"
-                        placeholder="Descreva o benefício oferecido..."
-                        required
-                    ></textarea>
+                    <textarea name="descricao_beneficio"
+                              class="form-control campo-admin mb-3"
+                              rows="3"
+                              maxlength="500"
+                              placeholder="Descreva o benefício oferecido..."
+                              required></textarea>
 
                     <button type="submit"
                             name="cadastrar_beneficio"
                             class="btn btn-upir w-100">
-
                         Cadastrar benefício
-
                     </button>
 
                 </form>
@@ -596,25 +648,22 @@ $resultado = $conexao->query("
 
                     <div class="col-md-5">
 
-                        <label class="form-label">
-                            Plano
-                        </label>
+                        <label class="form-label">Plano</label>
 
                         <select name="id_plano"
                                 class="form-select campo-admin"
                                 required>
 
-                            <option value="">
-                                Selecione um plano
-                            </option>
+                            <option value="">Selecione um plano</option>
 
-                            <?php while ($plano = $planos->fetch_assoc()): ?>
+                            <?php
+                            $planos->data_seek(0);
+                            while ($plano = $planos->fetch_assoc()):
+                            ?>
 
                                 <option value="<?= (int)$plano["id_plano"] ?>">
-
                                     Plano <?= (int)$plano["id_plano"] ?>
                                     - R$ <?= number_format((float)$plano["valor_plano"], 2, ",", ".") ?>
-
                                 </option>
 
                             <?php endwhile; ?>
@@ -625,24 +674,18 @@ $resultado = $conexao->query("
 
                     <div class="col-md-5">
 
-                        <label class="form-label">
-                            Benefício
-                        </label>
+                        <label class="form-label">Benefício</label>
 
                         <select name="id_beneficio"
                                 class="form-select campo-admin"
                                 required>
 
-                            <option value="">
-                                Selecione um benefício
-                            </option>
+                            <option value="">Selecione um benefício</option>
 
                             <?php while ($beneficio = $beneficios->fetch_assoc()): ?>
 
                                 <option value="<?= (int)$beneficio["id_beneficio"] ?>">
-
                                     <?= escapar($beneficio["descricao_beneficio"]) ?>
-
                                 </option>
 
                             <?php endwhile; ?>
@@ -656,9 +699,7 @@ $resultado = $conexao->query("
                         <button type="submit"
                                 name="associar"
                                 class="btn btn-upir w-100">
-
                             Associar
-
                         </button>
 
                     </div>
@@ -677,6 +718,116 @@ $resultado = $conexao->query("
 
     </div>
 
+    <!-- TABELA DE PLANOS -->
+
+    <div class="painel-admin mb-4">
+
+        <h3 class="subtitulo mb-4">
+            Gerenciar disponibilidade dos planos
+        </h3>
+
+        <div class="table-responsive">
+
+            <table class="table tabela-admin">
+
+                <thead>
+                    <tr>
+                        <th>Plano</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <?php
+                    $lista_planos = $conexao->query("
+                        SELECT id_plano, valor_plano, status_plano
+                        FROM Plano
+                        ORDER BY id_plano ASC
+                    ");
+                    ?>
+
+                    <?php if ($lista_planos && $lista_planos->num_rows > 0): ?>
+
+                        <?php while ($plano = $lista_planos->fetch_assoc()): ?>
+
+                            <tr>
+
+                                <td>
+                                    Plano <?= (int)$plano["id_plano"] ?>
+                                </td>
+
+                                <td>
+                                    R$ <?= number_format((float)$plano["valor_plano"], 2, ",", ".") ?>
+                                </td>
+
+                                <td>
+
+                                    <?php if ((int)$plano["status_plano"] === 1): ?>
+
+                                        <span class="badge bg-success">
+                                            Ativo
+                                        </span>
+
+                                    <?php else: ?>
+
+                                        <span class="badge bg-secondary">
+                                            Desativado
+                                        </span>
+
+                                    <?php endif; ?>
+
+                                </td>
+
+                                <td>
+
+                                    <form method="POST"
+                                          onsubmit="return confirm('Deseja realmente alterar a disponibilidade deste plano?');">
+
+                                        <input type="hidden"
+                                               name="token"
+                                               value="<?= escapar($token) ?>">
+
+                                        <input type="hidden"
+                                               name="id_plano"
+                                               value="<?= (int)$plano["id_plano"] ?>">
+
+                                        <button type="submit"
+                                                name="alterar_status"
+                                                class="btn btn-sm <?= (int)$plano["status_plano"] === 1 ? 'btn-danger' : 'btn-success' ?>">
+
+                                            <?= (int)$plano["status_plano"] === 1 ? 'Desativar' : 'Ativar' ?>
+
+                                        </button>
+
+                                    </form>
+
+                                </td>
+
+                            </tr>
+
+                        <?php endwhile; ?>
+
+                    <?php else: ?>
+
+                        <tr>
+                            <td colspan="4" class="text-center">
+                                Nenhum plano cadastrado.
+                            </td>
+                        </tr>
+
+                    <?php endif; ?>
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
     <!-- TABELA DE ASSOCIAÇÕES -->
 
     <div class="painel-admin">
@@ -690,14 +841,13 @@ $resultado = $conexao->query("
             <table class="table tabela-admin">
 
                 <thead>
-
                     <tr>
+                        <th>ID da associação</th>
                         <th>Plano</th>
                         <th>Valor</th>
                         <th>Benefício</th>
                         <th>Ação</th>
                     </tr>
-
                 </thead>
 
                 <tbody>
@@ -707,6 +857,10 @@ $resultado = $conexao->query("
                         <?php while ($linha = $resultado->fetch_assoc()): ?>
 
                             <tr>
+
+                                <td>
+                                    <?= (int)$linha["id_plano_beneficio"] ?>
+                                </td>
 
                                 <td>
                                     Plano <?= (int)$linha["id_plano"] ?>
@@ -725,7 +879,8 @@ $resultado = $conexao->query("
                                     <form method="POST"
                                           onsubmit="return confirm('Deseja remover este benefício do plano?');">
 
-                                        <input type="hidden" name="token"
+                                        <input type="hidden"
+                                               name="token"
                                                value="<?= escapar($token) ?>">
 
                                         <input type="hidden"
@@ -735,9 +890,7 @@ $resultado = $conexao->query("
                                         <button type="submit"
                                                 name="remover"
                                                 class="btn btn-danger btn-sm">
-
                                             Remover
-
                                         </button>
 
                                     </form>
@@ -751,11 +904,9 @@ $resultado = $conexao->query("
                     <?php else: ?>
 
                         <tr>
-
-                            <td colspan="4" class="text-center py-4">
+                            <td colspan="5" class="text-center py-4">
                                 Nenhum benefício associado a um plano.
                             </td>
-
                         </tr>
 
                     <?php endif; ?>
@@ -780,3 +931,7 @@ $resultado = $conexao->query("
 
 </body>
 </html>
+
+<?php
+$conexao->close();
+?>

@@ -2,7 +2,7 @@
 <?php
 require_once "conexao.php";
 
-$sql_planos = "SELECT id_plano, valor_plano FROM Plano ORDER BY id_plano";
+$sql_planos = "SELECT id_plano, valor_plano FROM Plano WHERE status_plano = 1 ORDER BY id_plano";
 $planos = $conexao->query($sql_planos);
 
 // Buscar formas de pagamento ativas

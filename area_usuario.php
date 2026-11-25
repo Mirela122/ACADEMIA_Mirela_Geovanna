@@ -251,6 +251,16 @@ $consulta->close();
 
         <?php endif; ?>
 
+        <!-- MENSAGEM DE NOVA ASSINATURA -->
+
+       <?php if (isset($_GET["assinatura"]) &&
+          $_GET["assinatura"] === "sucesso"): ?>
+
+        <div class="alert alert-success">
+         Seu novo plano foi contratado com sucesso!
+       </div>
+
+<?php endif; ?>
 
         <!-- SAUDAÇÃO -->
 
@@ -346,8 +356,12 @@ $consulta->close();
                                 <?php else: ?>
 
                                     <h3 class="text-danger">
-                                        Inativa ou vencida
+                                     Inativa ou vencida
                                     </h3>
+
+                                <a href="nova_assinatura.php" class="btn btn-upir mt-3">
+                                    Contratar um novo plano
+                                </a>
 
                                 <?php endif; ?>
 
@@ -403,11 +417,15 @@ $consulta->close();
 
             <?php else: ?>
 
-                <div class="painel">
+               <div class="painel">
 
-                    <h4>Você ainda não possui um plano.</h4>
+    <h4>Você ainda não possui um plano.</h4>
 
-                </div>
+    <a href="nova_assinatura.php" class="btn btn-upir mt-3">
+        Escolher um plano
+    </a>
+
+</div>
 
             <?php endif; ?>
 
@@ -415,6 +433,7 @@ $consulta->close();
 
 
         <!-- HISTÓRICO DE ASSINATURAS -->
+         
 
         <section class="secao">
 

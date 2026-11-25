@@ -42,6 +42,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["editar"])) {
     if (
         $id <= 0 ||
         $nome === "" ||
+        mb_strlen($nome, "UTF-8") > 100 ||
         !in_array($dia, $dias, true) ||
         !preg_match('/^\d{2}:\d{2}$/', $horario) ||
         $professor <= 0
@@ -73,58 +74,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["editar"])) {
         );
 
         if ($stmt->execute()) {
+
             header("Location: adm_aulas.php?sucesso=editar");
             exit;
-        }
-
-        $mensagem = "Erro ao editar a aula.";
-        $tipo_mensagem = "danger";
-    }
-}
-
-// =================================================
-// EXCLUIR AULA
-// =================================================
-
-if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["excluir"])) {
-
-    $id = (int)($_POST["id_aula"] ?? 0);
-
-    if ($id > 0) {
-
-        $sql = "
-            SELECT COUNT(*) AS total
-            FROM Plano_Aulas
-            WHERE id_aula = ?
-        ";
-
-        $stmt = $conexao->prepare($sql);
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-
-        $verificacao = $stmt->get_result()->fetch_assoc();
-
-        if ($verificacao["total"] > 0) {
-
-            $mensagem = "Esta aula está vinculada a um plano e não pode ser excluída.";
-            $tipo_mensagem = "danger";
 
         } else {
 
-            $stmt = $conexao->prepare(
-                "DELETE FROM Aulas WHERE id_aula = ?"
-            );
-
-            $stmt->bind_param("i", $id);
-
-            if ($stmt->execute()) {
-                header("Location: adm_aulas.php?sucesso=excluir");
-                exit;
-            }
-
-            $mensagem = "Erro ao excluir a aula.";
+            $mensagem = "Erro ao editar a aula.";
             $tipo_mensagem = "danger";
+
         }
+
+        $stmt->close();
     }
 }
 
@@ -136,11 +97,6 @@ if (isset($_GET["sucesso"])) {
 
     if ($_GET["sucesso"] === "editar") {
         $mensagem = "Aula atualizada com sucesso!";
-        $tipo_mensagem = "success";
-    }
-
-    if ($_GET["sucesso"] === "excluir") {
-        $mensagem = "Aula excluída com sucesso!";
         $tipo_mensagem = "success";
     }
 }
@@ -299,6 +255,8 @@ $professores = $conexao->query("
 
 <main class="container my-5">
 
+    <!-- CABEÇALHO -->
+
     <div class="mb-4">
 
         <h1 class="titulo-pagina">
@@ -314,6 +272,8 @@ $professores = $conexao->query("
         </a>
 
     </div>
+
+    <!-- MENSAGENS -->
 
     <?php if ($mensagem !== ""): ?>
 
@@ -363,6 +323,7 @@ $professores = $conexao->query("
             <table class="table tabela-admin">
 
                 <thead>
+
                     <tr>
                         <th>ID</th>
                         <th>Aula</th>
@@ -371,6 +332,7 @@ $professores = $conexao->query("
                         <th>Horário</th>
                         <th>Ações</th>
                     </tr>
+
                 </thead>
 
                 <tbody>
@@ -391,33 +353,27 @@ $professores = $conexao->query("
 
                             <td><?= escapar(substr($aula["horario_aula"], 0, 5)) ?></td>
 
-                            <td class="text-nowrap">
+                            <td>
 
                                 <button
+                                    type="button"
                                     class="btn btn-warning btn-sm"
                                     data-bs-toggle="modal"
                                     data-bs-target="#editar<?= (int)$aula["id_aula"] ?>">
+
                                     Editar
+
                                 </button>
-
-                                <form method="POST" class="d-inline"
-                                      onsubmit="return confirm('Deseja realmente excluir esta aula?')">
-
-                                    <input type="hidden" name="id_aula"
-                                           value="<?= (int)$aula["id_aula"] ?>">
-
-                                    <button type="submit" name="excluir"
-                                            class="btn btn-danger btn-sm">
-                                        Excluir
-                                    </button>
-
-                                </form>
 
                             </td>
 
                         </tr>
 
                         <!-- MODAL DE EDIÇÃO -->
+
+                        <?php
+                        $professores->data_seek(0);
+                        ?>
 
                         <div class="modal fade"
                              id="editar<?= (int)$aula["id_aula"] ?>"
@@ -432,8 +388,11 @@ $professores = $conexao->query("
 
                                         <div class="modal-header">
 
-                                            <h5 class="modal-title" style="color:#cf0139;">
+                                            <h5 class="modal-title"
+                                                style="color:#cf0139;">
+
                                                 Editar aula
+
                                             </h5>
 
                                             <button type="button"
@@ -445,29 +404,36 @@ $professores = $conexao->query("
 
                                         <div class="modal-body">
 
-                                            <input type="hidden" name="id_aula"
+                                            <input type="hidden"
+                                                   name="id_aula"
                                                    value="<?= (int)$aula["id_aula"] ?>">
 
-                                            <label class="form-label">Nome da aula</label>
+                                            <label class="form-label">
+                                                Nome da aula
+                                            </label>
 
-                                            <input type="text" name="nome_aula"
-                                                   class="form-control campo-admin mb-3"
-                                                   maxlength="100"
-                                                   value="<?= escapar($aula["nome_aula"]) ?>"
-                                                   required>
+                                            <input
+                                                type="text"
+                                                name="nome_aula"
+                                                class="form-control campo-admin mb-3"
+                                                maxlength="100"
+                                                value="<?= escapar($aula["nome_aula"]) ?>"
+                                                required
+                                            >
 
-                                            <label class="form-label">Professor</label>
+                                            <label class="form-label">
+                                                Professor
+                                            </label>
 
-                                            <select name="id_professor"
-                                                    class="form-select campo-admin mb-3"
-                                                    required>
+                                            <select
+                                                name="id_professor"
+                                                class="form-select campo-admin mb-3"
+                                                required>
 
-                                                <?php
-                                                $professores->data_seek(0);
-                                                while ($prof = $professores->fetch_assoc()):
-                                                ?>
+                                                <?php while ($prof = $professores->fetch_assoc()): ?>
 
-                                                    <option value="<?= (int)$prof["id_professor"] ?>"
+                                                    <option
+                                                        value="<?= (int)$prof["id_professor"] ?>"
                                                         <?= (int)$prof["id_professor"] === (int)$aula["id_professor"] ? "selected" : "" ?>>
 
                                                         <?= escapar($prof["nome_professor"]) ?>
@@ -478,15 +444,19 @@ $professores = $conexao->query("
 
                                             </select>
 
-                                            <label class="form-label">Dia da aula</label>
+                                            <label class="form-label">
+                                                Dia da aula
+                                            </label>
 
-                                            <select name="dia_aula"
-                                                    class="form-select campo-admin mb-3"
-                                                    required>
+                                            <select
+                                                name="dia_aula"
+                                                class="form-select campo-admin mb-3"
+                                                required>
 
                                                 <?php foreach ($dias as $dia): ?>
 
-                                                    <option value="<?= escapar($dia) ?>"
+                                                    <option
+                                                        value="<?= escapar($dia) ?>"
                                                         <?= $aula["dia_aula"] === $dia ? "selected" : "" ?>>
 
                                                         <?= escapar($dia) ?>
@@ -497,26 +467,38 @@ $professores = $conexao->query("
 
                                             </select>
 
-                                            <label class="form-label">Horário</label>
+                                            <label class="form-label">
+                                                Horário
+                                            </label>
 
-                                            <input type="time" name="horario_aula"
-                                                   class="form-control campo-admin"
-                                                   value="<?= escapar(substr($aula["horario_aula"], 0, 5)) ?>"
-                                                   required>
+                                            <input
+                                                type="time"
+                                                name="horario_aula"
+                                                class="form-control campo-admin"
+                                                value="<?= escapar(substr($aula["horario_aula"], 0, 5)) ?>"
+                                                required
+                                            >
 
                                         </div>
 
                                         <div class="modal-footer">
 
-                                            <button type="button"
-                                                    class="btn btn-secondary"
-                                                    data-bs-dismiss="modal">
+                                            <button
+                                                type="button"
+                                                class="btn btn-secondary"
+                                                data-bs-dismiss="modal">
+
                                                 Cancelar
+
                                             </button>
 
-                                            <button type="submit" name="editar"
-                                                    class="btn btn-upir">
+                                            <button
+                                                type="submit"
+                                                name="editar"
+                                                class="btn btn-upir">
+
                                                 Salvar alterações
+
                                             </button>
 
                                         </div>
@@ -534,9 +516,11 @@ $professores = $conexao->query("
                 <?php else: ?>
 
                     <tr>
+
                         <td colspan="6" class="text-center">
                             Nenhuma aula cadastrada.
                         </td>
+
                     </tr>
 
                 <?php endif; ?>
@@ -552,9 +536,11 @@ $professores = $conexao->query("
 </main>
 
 <footer class="text-center py-4">
+
     <p class="text-secondary">
         UPIR Academia | Área administrativa
     </p>
+
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
@@ -562,3 +548,6 @@ $professores = $conexao->query("
 </body>
 </html>
 
+<?php
+$conexao->close();
+?>

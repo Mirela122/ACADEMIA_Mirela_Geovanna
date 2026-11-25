@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ cliente: <!DOCTYPE html>
 <html lang="pt-br">
 <head>
         <title>Upir Academia</title>
@@ -61,6 +61,7 @@ $sql = "SELECT
             ON p.id_plano = pb.id_plano
         LEFT JOIN Beneficio b
             ON pb.id_beneficio = b.id_beneficio
+        WHERE p.status_plano = 1
         ORDER BY p.id_plano, b.id_beneficio";
 
 $resultado = $conexao->query($sql);
@@ -92,13 +93,13 @@ if ($resultado) {
 }
 ?>
 
-<div class="container">
+<div class="container" >
 
     <div class="row justify-content-center g-4">
 
         <?php foreach ($planos as $plano): ?>
 
-            <div class="col-xl-4 col-md-6">
+            <div class="col-xl-4 col-md-6" >
 
                 <div class="card h-100 p-3">
 
@@ -110,7 +111,7 @@ if ($resultado) {
 
                         <h5>O que nosso plano oferece:</h5>
 
-                        <ul class="list-group list-group-flush my-3">
+                        <ul class="list-group list-group-flush my-3" >
 
                             <?php foreach ($plano['beneficios'] as $beneficio): ?>
 
@@ -175,7 +176,7 @@ if ($resultado) {
                    </div>
                    
                     <div class="col-xl-3 col-sm-4" style="text-align: center;" >
-                        <h2 style="color: #3c3f42;">Institucional</h>
+                        <h2 style="color: #3c3f42;">Institucional</h2>
                         <br>
                         <li class="nav-item"><a class="nav-link" href="trabalhe.html" style="color: #54585c;"><u>Trabalhe conosco</u></a></li>
                         <li class="nav-item"><a class="nav-link" href="duvidas.html" style="color: #54585c;"><u>Dúvidas frequentes</u></a></li>

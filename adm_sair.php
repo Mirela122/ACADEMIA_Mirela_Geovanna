@@ -7,7 +7,7 @@ $_SESSION = [];
 
 session_destroy();
 
-header("Location: login_adm.php");
+header("Location: adm_login.php");
 exit;
 
 ?>

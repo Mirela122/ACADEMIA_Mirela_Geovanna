@@ -24,7 +24,7 @@ $sql = "SELECT
         FROM Professor p
         INNER JOIN Funcao_Professor f
         ON p.id_funcao = f.id_funcao
-        ORDER BY p.nome_professor";
+        ORDER BY p.id_professor";
 
 $resultado = $conexao->query($sql);
 
